@@ -1,0 +1,19 @@
+services:
+  php-fpm:
+    image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/tailadmin-laravel:latest
+    container_name: tailadmin-php-fpm
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - /var/www/tailadmin-laravel:/var/www/html
+      - /var/www/html/vendor
+    ports:
+      - "9000:9000"
+    networks:
+      - app-network
+    env_file:
+      - .env
+
+networks:
+  app-network:
+    driver: bridge
