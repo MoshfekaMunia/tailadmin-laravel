@@ -12,10 +12,3 @@ npm-debug.log
 yarn-error.log
 /.idea
 /.vscode
-
-# Deployment files (kept in deployment branch only)
-buildspec.yml
-appspec.yml
-docker-compose.yml
-Dockerfile
-/scripts/
