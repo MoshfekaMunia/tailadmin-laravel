@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Composer directly without pulling from Docker Hub
+# Install Composer directly (NO Docker Hub needed)
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer --version=2.7.0
 
 # Copy composer files
