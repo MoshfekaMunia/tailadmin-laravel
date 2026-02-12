@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libxml2-dev \
+    libonig-dev \
     && docker-php-ext-install pdo_mysql mbstring zip dom xml \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
