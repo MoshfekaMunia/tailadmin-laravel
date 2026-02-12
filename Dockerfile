@@ -2,38 +2,38 @@ FROM php:8.2-fpm
 
 WORKDIR /var/www/html
 
-# Install system dependencies
+# Install system dependencies and PHP extensions
 RUN apt-get update && apt-get install -y \
     libzip-dev \
     zip \
     unzip \
     git \
     curl \
-    libonig-dev \
     libxml2-dev \
-    && docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath \
+    && docker-php-ext-install pdo_mysql mbstring zip dom xml \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
-# Copy composer files first
-COPY composer.json composer.lock ./
+# Copy composer files
+COPY composer.json composer.lock* ./
 
-# Install dependencies (without scripts to avoid errors)
+# Install dependencies (ignore platform requirements since we're in Docker)
 RUN composer install \
     --no-dev \
     --no-scripts \
     --no-autoloader \
     --prefer-dist \
-    --no-interaction
+    --no-interaction \
+    --ignore-platform-reqs
 
-# Copy application code
+# Copy application
 COPY . .
 
-# Generate autoloader
-RUN composer dump-autoload --optimize --no-dev
+# Generate optimized autoloader
+RUN composer dump-autoload --optimize --no-dev --classmap-authoritative
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
