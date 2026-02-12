@@ -15,13 +15,13 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Composer
-COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
+# Install Composer directly without pulling from Docker Hub
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer --version=2.7.0
 
 # Copy composer files
 COPY composer.json composer.lock* ./
 
-# Install dependencies (ignore platform requirements since we're in Docker)
+# Install dependencies
 RUN composer install \
     --no-dev \
     --no-scripts \
