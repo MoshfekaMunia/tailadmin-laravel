@@ -8,16 +8,23 @@ phases:
       - REPOSITORY_URI=263751300136.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/tailadmin-laravel
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo Repository URI is $REPOSITORY_URI
+      - echo Image tag is $IMAGE_TAG
+      - echo Cleaning up old Docker images...
+      - docker system prune -af || true
   build:
     commands:
       - echo Build started on `date`
-      - docker build -t $REPOSITORY_URI:latest .
+      - echo Building the Docker image...
+      - docker build --no-cache -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
-      - echo Pushing Docker images...
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo Docker images pushed successfully
 
 artifacts:
   files:
