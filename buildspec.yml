@@ -1,25 +1,44 @@
 version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: us-east-1
+    ECR_REPOSITORY: 263751300136.dkr.ecr.us-east-1.amazonaws.com/tailadmin-laravel
+    EC2_USER: ubuntu
+    EC2_HOST: 34.234.103.82
+    DEPLOY_SCRIPT: /home/ubuntu/deploy.sh
+    SECRET_ARN: arn:aws:secretsmanager:us-east-1:263751300136:secret:tailadmin/ec2-deploy-key-x7XX76
+
 phases:
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR Public...
-      - aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
-      - echo Logging in to Amazon ECR Private...
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin 263751300136.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
-      - REPOSITORY_URI=263751300136.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/tailadmin-laravel
+      - echo "======================================"
+      - echo "🔑 Logging into Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY
+      - echo "⏳ Fetching EC2 deploy key from Secrets Manager..."
+      - aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text > /tmp/deploy_key.pem
+      - chmod 600 /tmp/deploy_key.pem
+      - REPOSITORY_URI=$ECR_REPOSITORY
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo "📌 Using IMAGE_TAG=$IMAGE_TAG"
+
   build:
     commands:
-      - echo Build started on `date`
-      - echo Building the Docker image...
+      - echo "======================================"
+      - echo "🚀 Building Docker image..."
       - docker build --no-cache -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+
   post_build:
     commands:
-      - echo Build completed on `date`
-      - echo Pushing the Docker images...
+      - echo "======================================"
+      - echo "📤 Pushing Docker images to ECR..."
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Docker images pushed successfully
-      - echo "To deploy, run the deploy script on EC2"
+      - echo "✅ Docker images pushed successfully"
+
+      - echo "======================================"
+      - echo "📡 Triggering EC2 deployment..."
+      - ssh -i /tmp/deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "IMAGE_TAG=$IMAGE_TAG bash -s" < $DEPLOY_SCRIPT
+      - echo "✅ EC2 deployment triggered successfully"
