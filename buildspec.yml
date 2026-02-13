@@ -9,10 +9,6 @@ phases:
       - REPOSITORY_URI=263751300136.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/tailadmin-laravel
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
-      - echo Repository URI is $REPOSITORY_URI
-      - echo Image tag is $IMAGE_TAG
-      - echo Cleaning up old Docker images...
-      - docker system prune -af || true
   build:
     commands:
       - echo Build started on `date`
@@ -26,8 +22,4 @@ phases:
       - docker push $REPOSITORY_URI:latest
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo Docker images pushed successfully
-artifacts:
-  files:
-    - appspec.yml
-    - scripts/**/*
-    - docker-compose.yml
+      - echo "To deploy, run the deploy script on EC2"
