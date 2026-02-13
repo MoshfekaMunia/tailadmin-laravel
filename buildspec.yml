@@ -29,4 +29,22 @@ phases:
       - aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text > /tmp/deploy_key.pem
       - chmod 600 /tmp/deploy_key.pem
       - echo "Triggering deploy on EC2..."
-      - ssh -i /tmp/deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "IMAGE_TAG=$IMAGE_TAG bash -s" < ./home/ubuntu/deploy.sh
+      - |
+        ssh -i /tmp/deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "IMAGE_TAG=$IMAGE_TAG" 'bash -s' <<'ENDSSH'
+        set -ex
+        echo "======================================"
+        echo "🚀 Deploying Docker image on EC2"
+        echo "======================================"
+        REPOSITORY_URI=263751300136.dkr.ecr.us-east-1.amazonaws.com/tailadmin-laravel
+        echo "🔑 Logging into ECR..."
+        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $REPOSITORY_URI
+        echo "📥 Pulling Docker image..."
+        docker pull $REPOSITORY_URI:$IMAGE_TAG
+        echo "🛑 Stopping old container..."
+        docker stop tailadmin-php-fpm || true
+        docker rm tailadmin-php-fpm || true
+        echo "🚀 Starting new container..."
+        docker run -d --name tailadmin-php-fpm -p 9000:9000 --env-file /var/www/tailadmin-laravel/.env $REPOSITORY_URI:$IMAGE_TAG
+        echo "✅ Deployment complete!"
+        docker ps
+        ENDSSH
