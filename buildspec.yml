@@ -7,11 +7,15 @@ env:
     EC2_USER: ubuntu
     EC2_HOST: 34.234.103.82
     DEPLOY_SCRIPT: /home/ubuntu/deploy.sh
+<<<<<<< HEAD
     SECRET_ARN: arn:aws:secretsmanager:us-east-1:263751300136:secret:tailadmin/ec2-deploy-key-x7XX76
+=======
+>>>>>>> a302945 (update buildspec.yml)
 
 phases:
   pre_build:
     commands:
+<<<<<<< HEAD
       - echo "======================================"
       - echo "🔑 Logging into Amazon ECR..."
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY
@@ -27,11 +31,23 @@ phases:
     commands:
       - echo "======================================"
       - echo "🚀 Building Docker image..."
+=======
+      - echo "Logging into Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY
+      - REPOSITORY_URI=$ECR_REPOSITORY
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo "IMAGE_TAG=$IMAGE_TAG"
+  build:
+    commands:
+      - echo "Building Docker image..."
+>>>>>>> a302945 (update buildspec.yml)
       - docker build --no-cache -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
 
   post_build:
     commands:
+<<<<<<< HEAD
       - echo "======================================"
       - echo "📤 Pushing Docker images to ECR..."
       - docker push $REPOSITORY_URI:latest
@@ -42,3 +58,15 @@ phases:
       - echo "📡 Triggering EC2 deployment..."
       - ssh -i /tmp/deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "IMAGE_TAG=$IMAGE_TAG bash -s" < $DEPLOY_SCRIPT
       - echo "✅ EC2 deployment triggered successfully"
+=======
+      - echo "Pushing Docker images..."
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo "Docker images pushed successfully"
+
+      # Trigger EC2 deploy automatically via SSH
+      - echo "Triggering EC2 deployment..."
+      - chmod +x $DEPLOY_SCRIPT
+      - ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "bash -s" < $DEPLOY_SCRIPT
+
+>>>>>>> a302945 (update buildspec.yml)
