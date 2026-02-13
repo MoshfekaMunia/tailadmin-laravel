@@ -3,50 +3,34 @@ version: 0.2
 env:
   variables:
     AWS_DEFAULT_REGION: us-east-1
-    ECR_REPOSITORY: 263751300136.dkr.ecr.us-east-1.amazonaws.com/tailadmin-laravel
     EC2_USER: ubuntu
     EC2_HOST: 34.234.103.82
-    DEPLOY_SCRIPT: /home/ubuntu/deploy.sh
-    SECRET_ARN: arn:aws:secretsmanager:us-east-1:263751300136:secret:tailadmin/ec2-deploy-key-x7XX76
+    SECRET_ARN: arn:aws:secretsmanager:us-east-1:263751300136:secret:tailadmin/ec2-deploy-key-ubuntu-3uWCmM
 
 phases:
   pre_build:
     commands:
-      - echo "======================================"
-      - echo "🔑 Logging into Amazon ECR..."
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY
-      - echo "⏳ Fetching EC2 deploy key from Secrets Manager..."
-      - aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text > /tmp/deploy_key.pem
-      - chmod 600 /tmp/deploy_key.pem
-      - REPOSITORY_URI=$ECR_REPOSITORY
+      - echo "Logging in to ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin 263751300136.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - REPOSITORY_URI=263751300136.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/tailadmin-laravel
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
-      - echo "📌 Using IMAGE_TAG=$IMAGE_TAG"
+      - echo "Pre-build done. Image tag: $IMAGE_TAG"
 
   build:
     commands:
-      - echo "======================================"
-      - echo "🚀 Building Docker image..."
+      - echo "Building Docker image..."
       - docker build --no-cache -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
 
   post_build:
     commands:
-      - echo "📡 Triggering EC2 deployment..."
-      - |
-        ssh -i /tmp/deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'EOF'
-        set -ex
-        echo "Logging into ECR..."
-        aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 263751300136.dkr.ecr.us-east-1.amazonaws.com
-        echo "Pulling latest image..."
-        docker pull 263751300136.dkr.ecr.us-east-1.amazonaws.com/tailadmin-laravel:$IMAGE_TAG
-        echo "Stopping old container..."
-        docker stop tailadmin-php-fpm || true
-        docker rm tailadmin-php-fpm || true
-        echo "Starting new container..."
-        docker run -d --name tailadmin-php-fpm -p 9000:9000 --env-file /var/www/tailadmin-laravel/.env \
-        263751300136.dkr.ecr.us-east-1.amazonaws.com/tailadmin-laravel:$IMAGE_TAG
-        echo "Deployment complete!"
-        docker ps
-        EOF 
+      - echo "Pushing Docker images..."
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo "Fetching EC2 deploy key from Secrets Manager..."
+      - aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text > /tmp/deploy_key.pem
+      - chmod 600 /tmp/deploy_key.pem
+      - echo "Triggering deploy on EC2..."
+      - ssh -i /tmp/deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "IMAGE_TAG=$IMAGE_TAG bash -s" < ./deploy.sh
 
