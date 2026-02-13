@@ -21,17 +21,17 @@ phases:
     commands:
       - echo "Building Docker image..."
       - docker build --no-cache -t $REPOSITORY_URI:latest .
-      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+      - echo "Tagging Docker image..."
+      - docker tag "$REPOSITORY_URI:latest" "$REPOSITORY_URI:$IMAGE_TAG"
 
   post_build:
     commands:
       - echo "Pushing Docker images..."
-      - docker push $REPOSITORY_URI:latest
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - docker push "$REPOSITORY_URI:latest"
+      - docker push "$REPOSITORY_URI:$IMAGE_TAG"
       - echo "Fetching EC2 deploy key from Secrets Manager..."
       - aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text > /tmp/deploy_key.pem
       - chmod 600 /tmp/deploy_key.pem
       - echo "Triggering deploy on EC2..."
-      - >
-        ssh -i /tmp/deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "IMAGE_TAG=$IMAGE_TAG bash -s" < ./deploy.sh
+      - ssh -i /tmp/deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "IMAGE_TAG=$IMAGE_TAG bash -s" < ./deploy.sh
 
