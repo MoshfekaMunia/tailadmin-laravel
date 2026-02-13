@@ -29,4 +29,4 @@ phases:
       - aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text > /tmp/deploy_key.pem
       - chmod 600 /tmp/deploy_key.pem
       - echo "Triggering deploy on EC2..."
-      - ssh -i /tmp/deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "IMAGE_TAG=$IMAGE_TAG bash -s" < ./deploy.sh
+      - ssh -i /tmp/deploy_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST "IMAGE_TAG=$IMAGE_TAG bash -s" < ./home/ubuntu/deploy.sh
